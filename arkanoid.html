@@ -1,0 +1,73 @@
+<head>
+    <style>
+    body {
+    position: absolute;
+    background-image: url(wallpaper.jpg);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
+    }
+    </style>
+</head>
+<body>
+    <script type="text/javascript" src="arkanoid.js"></script>
+    <canvas id="arkanoid" width="1000" height="1000" style="border: 1px solid #000000">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <script type="text/javascript">
+        const ballRadius = 5;
+        let jsonData;
+        let doc = document.getElementById("arkanoid");
+        let pause = true;
+        let X = 0;
+
+        let graphics_update = function (plate) {
+            let ctx = plate.getContext("2d");
+            ctx.clearRect(0, 0, plate.width, plate.height);
+            for (let i = 0; i < jsonData.blks.length; i++) {
+                if (i != 0 && jsonData.blks[i].health == 1)
+                    ctx.strokeRect(jsonData.blks[i].x - jsonData.blks[i].width, jsonData.blks[i].y - jsonData.blks[i].height, jsonData.blks[i].width * 2,
+                        jsonData.blks[i].height * 2);
+                else if (i == 0)
+                    ctx.fillRect(jsonData.blks[i].x - jsonData.blks[i].width, jsonData.blks[i].y - jsonData.blks[i].height, jsonData.blks[i].width * 2,
+                        jsonData.blks[i].height * 2);
+                else
+                    ctx.fillRect(jsonData.blks[i].x - jsonData.blks[i].width, jsonData.blks[i].y - jsonData.blks[i].height, jsonData.blks[i].width * 2,
+                        jsonData.blks[i].height * 2);
+            }
+            ctx.beginPath();
+            ctx.arc(jsonData.bx, jsonData.by, ballRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+        };
+
+        let socket = new WebSocket('ws://localhost:1235');
+        socket.onopen = function() {
+            console.log('Connection established');
+        };
+        socket.onmessage = function(event) {
+            if (typeof (event.data) == "string") {
+                jsonData = JSON.parse(event.data);
+                graphics_update(doc);
+            }
+        };
+        setInterval(function () {
+            socket.send(JSON.stringify({command:"move", x: X}));
+        }, 34);
+        doc.onmousemove = event => { X = event.clientX };
+        doc.onclick = function (event) {
+            if (event.which == 1 && pause != true) {
+                socket.send(JSON.stringify({command: "pause"}));
+                pause = true;
+            } else if (event.which == 1 && pause == true) {
+                socket.send(JSON.stringify({command: "continue"}));
+                pause = false;
+            }
+        };
+        window.addEventListener('keyup', function (event) {
+            if (event.key === "Escape") {
+                socket.send(JSON.stringify({command: "exit"}));
+                window.location.href = "mainMenu.html";
+            }
+        });
+    </script>
+</body>
